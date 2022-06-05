@@ -1,0 +1,2180 @@
+---
+title: "IV Valid Test"
+author: Kanta Ogawa
+date: "2022 / 03 / 14"
+output: html_document
+---
+
+```{r read data, echo=FALSE, include=FALSE }
+
+library(dplyr)
+library(tidyr)
+library(ggmap)
+library(lmtest)
+library(stargazer)
+library(readr)
+library(xtable)
+library(ggplot2)
+
+library(AER)
+# library(sandwitch)
+
+
+df <- read.csv("../Data/panel_data.csv")
+
+
+```
+
+```{r preprocess, echo=FALSE, include=FALSE }
+
+## 1.Explanatory variable: Relative_redistributive_effects
+
+df_unbalance_GINI <- df[!is.na(df$Relative_redistributive_effects) &
+  !is.na(df$Elderly_pct) &
+  !is.na(df$Right_left) & # Include the political data
+  !is.na(df$Chrstprotpct) &
+  !is.na(df$Unemployment_rate_pct) & # contorol var
+  !is.na(df$Poverty_rate), ] # control var
+
+df_unbalance_GINI_count <- df_unbalance_GINI %>%
+  group_by(LOCATION) %>%
+  summarise(count = n())
+
+df_unbalance_GINI_one <- df_unbalance_GINI_count[df_unbalance_GINI_count$count == 1, ]
+
+for (i in df_unbalance_GINI_one$LOCATION) {
+  df_unbalance_GINI <- df_unbalance_GINI[df_unbalance_GINI$LOCATION != i, ]
+}
+
+df_unbalance_GINI_timecount <- df_unbalance_GINI %>%
+  group_by(TIME) %>%
+  summarise(timecount = n()) # each period is higher than 3 - OK
+
+df_unbalance_GINI_timeone <- df_unbalance_GINI_timecount[df_unbalance_GINI_timecount$timecount == 1, ]
+
+
+for (t in df_unbalance_GINI_timeone$TIME) {
+  df_unbalance_GINI <- df_unbalance_GINI[df_unbalance_GINI$TIME != t, ]
+}
+
+
+## 2.Explanatory variable: Public Transfer
+
+df_unbalance_pub <- df[!is.na(df$Public_transfer) &
+  !is.na(df$Elderly_pct) &
+  !is.na(df$Right_left) & # Include the political data
+  !is.na(df$Chrstprotpct) &
+  !is.na(df$Unemployment_rate_pct) & # contorol var
+  !is.na(df$Poverty_rate), ] # control var
+
+df_unbalance_pub_count <- df_unbalance_pub %>%
+  group_by(LOCATION) %>%
+  summarise(count = n())
+
+df_unbalance_pub_one <- df_unbalance_pub_count[df_unbalance_pub_count$count == 1, ]
+
+for (i in df_unbalance_pub_one$LOCATION) {
+  df_unbalance_pub <- df_unbalance_pub[df_unbalance_pub$LOCATION != i, ]
+}
+
+df_unbalance_pub_timecount <- df_unbalance_pub %>%
+  group_by(TIME) %>%
+  summarise(timecount = n())
+
+df_unbalance_pub_timeone <- df_unbalance_pub_timecount[df_unbalance_pub_timecount$timecount == 1, ]
+
+
+for (t in df_unbalance_pub_timeone$TIME) {
+  df_unbalance_pub <- df_unbalance_pub[df_unbalance_pub$TIME != t, ]
+}
+
+
+## 3. Net Public Transfer?
+
+df_unbalance_netpub <- df[!is.na(df$Net_public_transfer) &
+  !is.na(df$Elderly_pct) &
+  !is.na(df$Right_left) & # Include the political data
+  !is.na(df$Chrstprotpct) &
+  !is.na(df$Unemployment_rate_pct) & # contorol var
+  !is.na(df$Poverty_rate), ] # control var
+
+df_unbalance_netpub_count <- df_unbalance_netpub %>%
+  group_by(LOCATION) %>%
+  summarise(count = n())
+
+df_unbalance_netpub_one <- df_unbalance_netpub_count[df_unbalance_netpub_count$count == 1, ]
+
+for (i in df_unbalance_netpub_one$LOCATION) {
+  df_unbalance_netpub <- df_unbalance_netpub[df_unbalance_netpub$LOCATION != i, ]
+}
+
+df_unbalance_netpub_timecount <- df_unbalance_netpub %>%
+  group_by(TIME) %>%
+  summarise(timecount = n()) # each period is higher than 3 - OK
+
+df_unbalance_netpub_timeone <- df_unbalance_netpub_timecount[df_unbalance_netpub_timecount$timecount == 1, ]
+
+
+for (t in df_unbalance_netpub_timeone$TIME) {
+  df_unbalance_netpub <- df_unbalance_netpub[df_unbalance_netpub$TIME != t, ]
+}
+
+```
+
+
+
+
+```{r, echo=FALSE}
+
+# A. IV: Elderly_pct
+
+## i.  Ex var:  Relative_redistributive_effects
+
+mod_Eld_GINI <- lm(Relative_redistributive_effects ~ 1
+  + Poverty_rate
+  + Unemployment_rate_pct
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia omit
+  + Austria
+  + Belgium
+  + Bulgaria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Romania
+  + Russia
+  + Slovakia
+  + Slovenia
+  + South_Africa
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 30 countries
+  + y2005 # omit y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011 # omit 2010
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  + Elderly_pct,
+data = df_unbalance_GINI
+)
+
+
+
+Eld_GINI <- linearHypothesis(mod_Eld_GINI,
+  "Elderly_pct = 0",
+  vcov = vcovHC, type = "HC3"
+)
+
+
+
+
+## ii.  Ex var:  Public transfer
+
+mod_Eld_pub <- lm(Public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 26 countries
+  + y1992 # y1991
+  + y1993
+  + y1994
+  + y1995
+  + y1996
+  + y1997
+  + y1998
+  + y1999
+  + y2000
+  + y2001
+  + y2002
+  + y2003
+  + y2004
+  + y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  + Elderly_pct,
+data = df_unbalance_pub
+)
+
+
+Eld_pub <- linearHypothesis(mod_Eld_pub,
+  "Elderly_pct = 0",
+  vcov = vcovHC, type = "HC3"
+)
+
+## iii.  Ex var: Net Public transfer
+
+mod_Eld_netpub <- lm(Net_public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Luxembourg
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 21 countries
+  + y1997 # omit y1995
+  + y1999
+  + y2001
+  + y2003
+  + y2005
+  + y2007
+  + y2009
+  + y2011
+  + y2013
+  + y2015
+  + y2017
+  + Elderly_pct,
+data = df_unbalance_netpub
+)
+
+
+Eld_netpub <- linearHypothesis(mod_Eld_netpub,
+  "Elderly_pct = 0",
+  vcov = vcovHC, type = "HC3"
+)
+
+```
+
+
+
+
+
+```{r, echo=FALSE}
+
+# B. IV: Right_left
+
+## i.  Ex var:  Relative_redistributive_effects
+
+
+mod_Rile_GINI <- lm(Relative_redistributive_effects ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Bulgaria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Romania
+  + Russia
+  + Slovakia
+  + Slovenia
+  + South_Africa
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 30 countries
+  + y2005 # omit y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011 # omit 2010
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  + Right_left,
+data = df_unbalance_GINI
+)
+
+
+
+Rile_GINI <- linearHypothesis(mod_Rile_GINI,
+  "Right_left = 0",
+  vcov = vcovHC, type = "HC3"
+)
+
+
+## ii.  Ex var:  Public transfer
+
+mod_Rile_pub <- lm(Public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 26 countries
+  + y1992 # y1991
+  + y1993
+  + y1994
+  + y1995
+  + y1996
+  + y1997
+  + y1998
+  + y1999
+  + y2000
+  + y2001
+  + y2002
+  + y2003
+  + y2004
+  + y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  + Right_left,
+data = df_unbalance_pub
+)
+
+
+
+Rile_pub <- linearHypothesis(mod_Rile_pub,
+  "Right_left = 0",
+  vcov = vcovHC, type = "HC3"
+)
+
+
+
+## iii.  Ex var: Net Public transfer
+
+mod_Rile_netpub <- lm(Net_public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Luxembourg
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 21 countries
+  + y1997 # omit y1995
+  + y1999
+  + y2001
+  + y2003
+  + y2005
+  + y2007
+  + y2009
+  + y2011
+  + y2013
+  + y2015
+  + y2017
+  + Right_left,
+data = df_unbalance_netpub
+)
+
+
+
+Rile_netpub <- linearHypothesis(mod_Rile_netpub,
+  "Right_left = 0",
+  vcov = vcovHC, type = "HC3"
+)
+
+```
+
+
+
+```{r, echo=FALSE}
+
+# C. IV: Welfare
+
+## i.  Ex var:  Relative_redistributive_effects
+
+
+mod_Wel_GINI <- lm(Relative_redistributive_effects ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Bulgaria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Romania
+  + Russia
+  + Slovakia
+  + Slovenia
+  + South_Africa
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 30 countries
+  + y2005 # omit y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011 # omit 2010
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  + Welfare,
+data = df_unbalance_GINI
+)
+
+
+Wel_GINI <- linearHypothesis(mod_Wel_GINI,
+  "Welfare = 0",
+  vcov = vcovHC, type = "HC3"
+)
+
+
+## ii.  Ex var:  Public transfer
+
+mod_Wel_pub <- lm(Public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 26 countries
+  + y1992 # y1991
+  + y1993
+  + y1994
+  + y1995
+  + y1996
+  + y1997
+  + y1998
+  + y1999
+  + y2000
+  + y2001
+  + y2002
+  + y2003
+  + y2004
+  + y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  + Welfare,
+data = df_unbalance_pub
+)
+
+
+
+Wel_pub <- linearHypothesis(mod_Wel_pub,
+  "Welfare = 0",
+  vcov = vcovHC, type = "HC3"
+)
+
+
+## iii.  Ex var: Net Public transfer
+
+mod_Wel_netpub <- lm(Net_public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+ +Chrstprotpct
+ +Chrstcatpct
+ +Chrstorthpct
+ +Islam_general_pct
+ +Buddism_general
+  #+ Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Luxembourg
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 21 countries
+  + y1997 # omit y1995
+  + y1999
+  + y2001
+  + y2003
+  + y2005
+  + y2007
+  + y2009
+  + y2011
+  + y2013
+  + y2015
+  + y2017
+  + Welfare,
+data = df_unbalance_netpub
+)
+
+
+
+Wel_netpub <- linearHypothesis(mod_Wel_netpub,
+  "Welfare = 0",
+  vcov = vcovHC, type = "HC3"
+)
+
+```
+
+
+
+```{r, echo=FALSE}
+
+
+# D. IV: Equality_positive
+
+## i.  Ex var:  Relative_redistributive_effects
+
+mod_Equal_GINI <- lm(Relative_redistributive_effects ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Bulgaria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Romania
+  + Russia
+  + Slovakia
+  + Slovenia
+  + South_Africa
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 30 countries
+  + y2005 # omit y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011 # omit 2010
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  + Equality_pos,
+data = df_unbalance_GINI
+)
+
+
+
+Equal_GINI <- linearHypothesis(mod_Equal_GINI,
+  "Equality_pos = 0",
+  vcov = vcovHC, type = "HC3"
+)
+
+
+
+## ii.  Ex var:  Public transfer
+
+mod_Equal_pub <- lm(Public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 26 countries
+  + y1992 # y1991
+  + y1993
+  + y1994
+  + y1995
+  + y1996
+  + y1997
+  + y1998
+  + y1999
+  + y2000
+  + y2001
+  + y2002
+  + y2003
+  + y2004
+  + y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  + Equality_pos,
+data = df_unbalance_pub
+)
+
+
+
+Equal_pub <- linearHypothesis(mod_Equal_pub,
+  "Equality_pos = 0",
+  vcov = vcovHC, type = "HC3"
+)
+
+
+## iii.  Ex var: Net Public transfer
+
+mod_Equal_netpub <- lm(Net_public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Luxembourg
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 21 countries
+  + y1997 # omit y1995
+  + y1999
+  + y2001
+  + y2003
+  + y2005
+  + y2007
+  + y2009
+  + y2011
+  + y2013
+  + y2015
+  + y2017
+  + Equality_pos,
+data = df_unbalance_netpub
+)
+
+Equal_netpub <- linearHypothesis(mod_Equal_netpub,
+  "Equality_pos = 0",
+  vcov = vcovHC, type = "HC3"
+)
+
+
+```
+
+
+
+
+```{r, echo=FALSE}
+
+# E. IV: Elderly_pct & Right_left
+
+## i.  Ex var:  Relative_redistributive_effects
+
+mod_Eld_Rile_GINI <- lm(Relative_redistributive_effects ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Bulgaria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Romania
+  + Russia
+  + Slovakia
+  + Slovenia
+  + South_Africa
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 30 countries
+  + y2005 # omit y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011 # omit 2010
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  +  Right_left
+  + Elderly_pct,
+data = df_unbalance_GINI
+)
+
+
+
+Eld_Rile_GINI <- linearHypothesis(mod_Eld_Rile_GINI,
+ c("Right_left = 0","Elderly_pct= 0"),
+  vcov = vcovHC, type = "HC3"
+)
+
+
+
+
+
+## ii.  Ex var:  Public transfer
+
+mod_Eld_Rile_pub <- lm(Public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 26 countries
+  + y1992 # y1991
+  + y1993
+  + y1994
+  + y1995
+  + y1996
+  + y1997
+  + y1998
+  + y1999
+  + y2000
+  + y2001
+  + y2002
+  + y2003
+  + y2004
+  + y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  +  Right_left
+  + Elderly_pct,
+data = df_unbalance_pub
+)
+
+
+
+Eld_Rile_pub <- linearHypothesis(mod_Eld_Rile_pub,
+  c("Right_left = 0","Elderly_pct= 0"),
+  vcov = vcovHC, type = "HC3"
+)
+
+
+## iii.  Ex var: Net Public transfer
+
+mod_Eld_Rile_netpub <- lm(Net_public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Luxembourg
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 21 countries
+  + y1997 # omit y1995
+  + y1999
+  + y2001
+  + y2003
+  + y2005
+  + y2007
+  + y2009
+  + y2011
+  + y2013
+  + y2015
+  + y2017
+  +  Right_left
+  + Elderly_pct,
+data = df_unbalance_netpub
+)
+
+Eld_Rile_netpub <- linearHypothesis(mod_Eld_Rile_netpub,
+  c("Right_left = 0","Elderly_pct= 0"),
+  vcov = vcovHC, type = "HC3"
+)
+
+
+```
+
+```{r, echo=FALSE}
+
+#  F. IV: Elderly_pct & Welfare
+
+## i.  Ex var:  Relative_redistributive_effects
+
+mod_Eld_Wel_GINI <- lm(Relative_redistributive_effects ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Bulgaria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Romania
+  + Russia
+  + Slovakia
+  + Slovenia
+  + South_Africa
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 30 countries
+  + y2005 # omit y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011 # omit 2010
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  + Elderly_pct
+  + Welfare,
+data = df_unbalance_GINI
+)
+
+
+
+Eld_Wel_GINI <- linearHypothesis(mod_Eld_Wel_GINI,
+ c("Welfare = 0","Elderly_pct= 0"),
+  vcov = vcovHC, type = "HC3"
+)
+
+
+
+
+
+## ii.  Ex var:  Public transfer
+
+mod_Eld_Wel_pub <- lm(Public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 26 countries
+  + y1992 # y1991
+  + y1993
+  + y1994
+  + y1995
+  + y1996
+  + y1997
+  + y1998
+  + y1999
+  + y2000
+  + y2001
+  + y2002
+  + y2003
+  + y2004
+  + y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  + Elderly_pct
+  + Welfare,
+data = df_unbalance_pub
+)
+
+
+
+ Eld_Wel_pub <- linearHypothesis(mod_Eld_Wel_pub,
+  c("Welfare = 0","Elderly_pct= 0"),
+  vcov = vcovHC, type = "HC3"
+)
+
+
+## iii.  Ex var: Net Public transfer
+
+mod_Eld_Wel_netpub <- lm(Net_public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Luxembourg
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 21 countries
+  + y1997 # omit y1995
+  + y1999
+  + y2001
+  + y2003
+  + y2005
+  + y2007
+  + y2009
+  + y2011
+  + y2013
+  + y2015
+  + y2017
+  + Elderly_pct
+  + Welfare,
+data = df_unbalance_netpub
+)
+
+Eld_Wel_netpub <- linearHypothesis(mod_Eld_Wel_netpub,
+  c("Welfare = 0","Elderly_pct= 0"),
+  vcov = vcovHC, type = "HC3"
+)
+
+
+```
+
+
+
+```{r, echo=FALSE}
+
+#  G. IV: Elderly_pct & Equality_pos
+
+## i.  Ex var:  Relative_redistributive_effects
+
+mod_Eld_Equ_GINI <- lm(Relative_redistributive_effects ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Bulgaria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Romania
+  + Russia
+  + Slovakia
+  + Slovenia
+  + South_Africa
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 30 countries
+  + y2005 # omit y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011 # omit 2010
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  + Elderly_pct
+  + Equality_pos,
+data = df_unbalance_GINI
+)
+
+
+
+Eld_Equ_GINI <- linearHypothesis(mod_Eld_Equ_GINI,
+ c("Equality_pos = 0","Elderly_pct= 0"),
+  vcov = vcovHC, type = "HC3"
+)
+
+
+
+
+
+## ii.  Ex var:  Public transfer
+
+mod_Eld_Equ_pub <- lm(Public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 26 countries
+  + y1992 # y1991
+  + y1993
+  + y1994
+  + y1995
+  + y1996
+  + y1997
+  + y1998
+  + y1999
+  + y2000
+  + y2001
+  + y2002
+  + y2003
+  + y2004
+  + y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  + Elderly_pct
+  + Equality_pos,
+data = df_unbalance_pub
+)
+
+
+
+ Eld_Equ_pub <- linearHypothesis(mod_Eld_Equ_pub,
+  c("Equality_pos = 0","Elderly_pct= 0"),
+  vcov = vcovHC, type = "HC3"
+)
+
+
+## iii.  Ex var: Net Public transfer
+
+mod_Eld_Equ_netpub <- lm(Net_public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Luxembourg
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 21 countries
+  + y1997 # omit y1995
+  + y1999
+  + y2001
+  + y2003
+  + y2005
+  + y2007
+  + y2009
+  + y2011
+  + y2013
+  + y2015
+  + y2017
+  + Elderly_pct
+  + Equality_pos,
+data = df_unbalance_netpub
+)
+
+Eld_Equ_netpub <- linearHypothesis(mod_Eld_Equ_netpub,
+  c("Equality_pos = 0","Elderly_pct= 0"),
+  vcov = vcovHC, type = "HC3"
+)
+
+
+```
+
+
+
+```{r, echo=FALSE}
+
+#  H. IV: Elderly_pct & Welfare & Equality_pos
+
+## i.  Ex var:  Relative_redistributive_effects
+
+mod_Eld_Wel_Equ_GINI <- lm(Relative_redistributive_effects ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Bulgaria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Romania
+  + Russia
+  + Slovakia
+  + Slovenia
+  + South_Africa
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 30 countries
+  + y2005 # omit y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011 # omit 2010
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  +Elderly_pct
+  + Welfare
+  + Equality_pos,
+data = df_unbalance_GINI
+)
+
+
+
+Eld_Wel_Equ_GINI <- linearHypothesis(mod_Eld_Wel_Equ_GINI,
+ c("Equality_pos = 0","Welfare = 0","Elderly_pct= 0"),
+  vcov = vcovHC, type = "HC3"
+)
+
+
+
+
+
+## ii.  Ex var:  Public transfer
+
+mod_Eld_Wel_Equ_pub <- lm(Public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 26 countries
+  + y1992 # y1991
+  + y1993
+  + y1994
+  + y1995
+  + y1996
+  + y1997
+  + y1998
+  + y1999
+  + y2000
+  + y2001
+  + y2002
+  + y2003
+  + y2004
+  + y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  +Elderly_pct
+  + Welfare
+  + Equality_pos,
+data = df_unbalance_pub
+)
+
+
+
+ Eld_Wel_Equ_pub <- linearHypothesis(mod_Eld_Wel_Equ_pub,
+  c("Equality_pos = 0","Welfare = 0","Elderly_pct= 0"),
+  vcov = vcovHC, type = "HC3"
+)
+
+
+## iii.  Ex var: Net Public transfer
+
+mod_Eld_Wel_Equ_netpub <- lm(Net_public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Luxembourg
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 21 countries
+  + y1997 # omit y1995
+  + y1999
+  + y2001
+  + y2003
+  + y2005
+  + y2007
+  + y2009
+  + y2011
+  + y2013
+  + y2015
+  + y2017
+  +Elderly_pct
+  + Welfare
+  + Equality_pos,
+data = df_unbalance_netpub
+)
+
+Eld_Wel_Equ_netpub <- linearHypothesis(mod_Eld_Wel_Equ_netpub,
+  c("Equality_pos = 0","Welfare = 0","Elderly_pct= 0"),
+  vcov = vcovHC, type = "HC3"
+)
+
+
+```
+
+
+```{r, echo=FALSE}
+
+#  J. IV: Election year
+
+## i.  Ex var:  Relative_redistributive_effects
+
+mod_Ele_year_GINI<- lm(Relative_redistributive_effects ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Bulgaria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Romania
+  + Russia
+  + Slovakia
+  + Slovenia
+  + South_Africa
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 30 countries
+  + y2005 # omit y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011 # omit 2010
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  +Election_year,
+data = df_unbalance_GINI
+)
+
+
+
+Ele_year_GINI <- linearHypothesis(mod_Ele_year_GINI,
+ "Election_year = 0",
+  vcov = vcovHC, type = "HC3"
+)
+
+
+
+
+
+## ii.  Ex var:  Public transfer
+
+mod_Ele_year_pub <- lm(Public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Australia
+  + Austria
+  + Belgium
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 26 countries
+  + y1992 # y1991
+  + y1993
+  + y1994
+  + y1995
+  + y1996
+  + y1997
+  + y1998
+  + y1999
+  + y2000
+  + y2001
+  + y2002
+  + y2003
+  + y2004
+  + y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018
+  + y2019
+  +Election_year,
+data = df_unbalance_pub
+)
+
+
+
+ Ele_year_pub <- linearHypothesis(mod_Ele_year_pub,
+  "Election_year = 0",
+  vcov = vcovHC, type = "HC3"
+)
+
+
+## iii.  Ex var: Net Public transfer
+
+mod_Ele_year_netpub <- lm(Net_public_transfer ~ 1
++ Poverty_rate
+  + Unemployment_rate_pct
+  + Poverty_rate
+  +Chrstprotpct
+  +Chrstcatpct
+  +Chrstorthpct
+  +Islam_general_pct
+  +Buddism_general
+  #+ Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Luxembourg
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 21 countries
+  + y1997 # omit y1995
+  + y1999
+  + y2001
+  + y2003
+  + y2005
+  + y2007
+  + y2009
+  + y2011
+  + y2013
+  + y2015
+  + y2017
+  +Election_year,
+data = df_unbalance_netpub
+)
+
+Ele_year_netpub <- linearHypothesis(mod_Ele_year_netpub,
+  "Election_year = 0",
+  vcov = vcovHC, type = "HC3"
+)
+
+
+```
+
+
+
+
+```{r, echo=FALSE,results='asis'}
+#縦に並ぶ
+
+
+
+data <- matrix(c(
+  Eld_GINI[2, 3],
+  Rile_GINI[2, 3],
+  Wel_GINI[2, 3],
+  Equal_GINI[2, 3],
+  Eld_Rile_GINI[2, 3],
+  #Eld_Wel_GINI[2, 3],
+  #Eld_Equ_GINI[2, 3],
+  Eld_Wel_Equ_GINI[2, 3],
+  #Ele_year_GINI[2,3],
+  Eld_pub[2, 3],
+  Rile_pub[2, 3],
+  Wel_pub[2, 3],
+  Equal_pub[2, 3],
+  Eld_Rile_pub[2, 3],
+  #Eld_Wel_pub[2, 3],
+  #Eld_Equ_pub[2, 3],
+  Eld_Wel_Equ_pub[2, 3],
+  #Ele_year_pub[2,3],
+  Eld_netpub[2, 3],
+  Rile_netpub[2, 3],
+  Wel_netpub[2, 3],
+  Equal_netpub[2, 3],
+  Eld_Rile_netpub[2, 3],
+  #Eld_Wel_netpub[2, 3],
+  #Eld_Equ_netpub[2, 3],
+  Eld_Wel_Equ_netpub[2, 3]
+  #Ele_year_netpub[2,3]
+), 6, 3)
+
+
+colnames(data) <- c("----Relative redistributive effects---- ", "----Public transfer----", "----Net public transfer----")
+
+rownames(data) <- c(
+  "IV1:Elderly rate %",
+  "IV2:Right left of politics",
+  "IV3:Welfare of politics",
+  "IV4:Equality positiveness",
+  "IV5:Elderly rate (%) and Right left of politics", #"Elderly rate (%) and Welfare of politics",
+   #"Elderly rate (%) and Equality positiveness of politics",
+   "IV6:Elderly rate (%), Welfare and Equality positiveness"
+   #"Election yeat"
+)
+
+
+stargazer(data,
+  type = "html",
+  title = "IV valid test",
+  notes = "columns: Instrumental variables, rows: Explanatory variables"
+
+)
+
+stargazer(data,
+  type = "latex",
+  out = "../Code/a.IV_new.tex",
+  title = "IV valid test",
+  notes = "columns: Instrumental variables, rows: Explanatory variables"
+)
+```
+
+
+
+
+
+```{r, echo=FALSE,results='asis'}
+
+
+#縦に並べる
+
+data_new <- matrix(c(
+  cor(df_unbalance_GINI$Relative_redistributive_effects, df_unbalance_GINI$Elderly_pct),
+  cor(df_unbalance_GINI$Relative_redistributive_effects, df_unbalance_GINI$Right_left),
+  cor(df_unbalance_GINI$Relative_redistributive_effects, df_unbalance_GINI$Welfare),
+  cor(df_unbalance_GINI$Relative_redistributive_effects, df_unbalance_GINI$Equality_pos),
+  cor(df_unbalance_pub$Public_transfer, df_unbalance_pub$Elderly_pct),
+  cor(df_unbalance_pub$Public_transfer, df_unbalance_pub$Right_left),
+  cor(df_unbalance_pub$Public_transfer, df_unbalance_pub$Welfare),
+  cor(df_unbalance_pub$Public_transfer, df_unbalance_pub$Equality_pos),
+  cor(df_unbalance_netpub$Net_public_transfer, df_unbalance_netpub$Elderly_pct),
+  cor(df_unbalance_netpub$Net_public_transfer, df_unbalance_netpub$Right_left),
+   cor(df_unbalance_netpub$Net_public_transfer, df_unbalance_netpub$Welfare),
+   cor(df_unbalance_netpub$Net_public_transfer, df_unbalance_netpub$Equality_pos)
+), 4, 3)
+
+
+colnames(data_new) <- c("----Relative redistributive effects---- ", "----Public transfer----", "----Net public transfer----")
+
+rownames(data_new) <- c("Elderly rate %", "Right left of politics", "Welfare of politics", "Equality positiveness")
+
+
+stargazer(data_new,
+  type = "html",
+  title = "IV correlation check",
+  notes = "columns: Instrumental variables, rows: Explanatory variables"
+)
+
+stargazer(data_new,
+  type = "latex",
+  title = "IV correlation check",
+  notes = "columns: Instrumental variables, rows: Explanatory variables"
+)
+```
+
+
+
+
+
+
+
+
+```{r, echo=FALSE,results='asis'}
+#縦に並ぶ
+
+
+
+data <- matrix(c(
+  Eld_GINI[2, 3],
+  Rile_GINI[2, 3],
+  Wel_GINI[2, 3],
+  Equal_GINI[2, 3],
+  Eld_Rile_GINI[2, 3],
+  #Eld_Wel_GINI[2, 3],
+  #Eld_Equ_GINI[2, 3],
+  Eld_Wel_Equ_GINI[2, 3],
+  #Ele_year_GINI[2,3],
+  Eld_pub[2, 3],
+  Rile_pub[2, 3],
+  Wel_pub[2, 3],
+  Equal_pub[2, 3],
+  Eld_Rile_pub[2, 3],
+  #Eld_Wel_pub[2, 3],
+  #Eld_Equ_pub[2, 3],
+  Eld_Wel_Equ_pub[2, 3],
+  #Ele_year_pub[2,3],
+  Eld_netpub[2, 3],
+  Rile_netpub[2, 3],
+  Wel_netpub[2, 3],
+  Equal_netpub[2, 3],
+  Eld_Rile_netpub[2, 3],
+  #Eld_Wel_netpub[2, 3],
+  #Eld_Equ_netpub[2, 3],
+  Eld_Wel_Equ_netpub[2, 3]
+  #Ele_year_netpub[2,3]
+), 6, 3)
+
+
+colnames(data) <- c("----Relative redistributive effects---- ", "----Public transfer----","k")
+
+rownames(data) <- c(
+  "IV1:Elderly rate %",
+  "IV2:Right left of politics",
+  "IV3:Welfare of politics",
+  "IV4:Equality positiveness",
+  "IV5:Elderly rate (%) and Right left of politics",
+   "IV6:Elderly rate (%), Welfare and Equality positiveness"
+
+)
+
+
+stargazer(data,
+  type = "html",
+  title = "IV valid test",
+  notes = "rows: Instrumental variables, columns: Explanatory variables",
+  dep.var.caption = "Target variables"
+
+
+)

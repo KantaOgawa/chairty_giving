@@ -1,0 +1,892 @@
+---
+title: "IV Regression all on a table"
+author: Kanta Ogawa
+date: "2022 / 03 / 23"
+output: html_document
+---
+
+
+```{r read data, echo=FALSE, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(sandwich)
+library(lmtest)
+library(AER)
+library(ggmap)
+library(stargazer)
+library(readr)
+library(xtable)
+library(ggplot2)
+library(ivmodel)
+# library(Hmisc)
+
+df <- read.csv("../Data/panel_data.csv")
+
+```
+
+
+```{r, echo=FALSE, include=FALSE}
+# IV 1. Eld.
+
+
+## 5. Public - log_Private
+
+
+df_unbalance_priv_pub <- df[!is.na(df$Public_transfer) &
+  !is.na(df$log_Private_transfer) &
+  !is.na(df$Unemployment_rate_pct) &
+  !is.na(df$Chrstprotpct) &
+  !is.na(df$Right_left) &
+  !is.na(df$Poverty_rate), ]
+
+df_unbalance_priv_pub_count <- df_unbalance_priv_pub %>%
+  group_by(LOCATION) %>%
+  summarise(count = n())
+
+df_unbalance_priv_pub_one <- df_unbalance_priv_pub_count[df_unbalance_priv_pub_count$count == 1, ]
+
+for (i in df_unbalance_priv_pub_one$LOCATION) {
+  df_unbalance_priv_pub <- df_unbalance_priv_pub[df_unbalance_priv_pub$LOCATION != i, ]
+}
+
+df_unbalance_priv_pub_timecount <- df_unbalance_priv_pub %>%
+  group_by(TIME) %>%
+  summarise(timecount = n()) # each period is higher than 3 - OK
+
+df_unbalance_priv_pub_timeone <- df_unbalance_priv_pub_timecount[df_unbalance_priv_pub_timecount$timecount == 1, ]
+
+
+for (t in df_unbalance_priv_pub_timeone$TIME) {
+  df_unbalance_priv_pub <- df_unbalance_priv_pub[df_unbalance_priv_pub$TIME != t, ]
+}
+
+
+
+###### pattern 1 Elderly_pct
+
+ivreg_unbalance_priv_pub_1 <- ivreg(log_Private_transfer ~ 1 + Public_transfer +
+  +Poverty_rate
+  + Unemployment_rate_pct
+  + Chrstprotpct
+  + Chrstcatpct
+  + Chrstorthpct
+  + Islam_general_pct
+  + Buddism_general
+  #+ Australia
+  + Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 25 countries
+  + y1992 # omit 1991
+  + y1993
+  + y1994
+  + y1995
+  + y1996
+  + y1997
+  + y1998
+  + y1999
+  + y2000
+  + y2001
+  + y2002
+  + y2003
+  + y2004
+  + y2005
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018 |
+  . - Public_transfer
+    + Elderly_pct,
+data = df_unbalance_priv_pub
+)
+
+Public_5_1 <- coeftest(ivreg_unbalance_priv_pub_1, vcov = vcovHC, type = "HC3")
+
+# 6. Public - WGI
+
+
+df_unbalance_pub_WGI <- df[!is.na(df$Public_transfer) &
+  !is.na(df$Giving_money) &
+  (df$Giving_money != "") &
+  (df$Giving_money != "-") &
+  !is.na(df$Chrstprotpct) &
+  !is.na(df$Right_left) &
+  !is.na(df$Poverty_rate) &
+  !is.na(df$Unemployment_rate_pct), ]
+
+df_unbalance_pub_WGI <- df_unbalance_pub_WGI[df_unbalance_pub_WGI$Giving_money != "", ]
+
+df_unbalance_pub_WGI_count <- df_unbalance_pub_WGI %>%
+  group_by(LOCATION) %>%
+  summarise(count = n())
+
+df_unbalance_pub_WGI_one <- df_unbalance_pub_WGI_count[df_unbalance_pub_WGI_count$count == 1, ]
+
+for (i in df_unbalance_pub_WGI_one$LOCATION) {
+  df_unbalance_pub_WGI <- df_unbalance_pub_WGI[df_unbalance_pub_WGI$LOCATION != i, ]
+}
+
+df_unbalance_pub_WGI_timecount <- df_unbalance_pub_WGI %>%
+  group_by(TIME) %>%
+  summarise(timecount = n())
+
+df_unbalance_pub_WGI_timeone <- df_unbalance_pub_WGI_timecount[df_unbalance_pub_WGI_timecount$TIME == 1, ]
+
+for (t in df_unbalance_pub_WGI_timeone$TIME) {
+  df_unbalance_pub_WGI <- df_unbalance_pub_WGI[df_unbalance_pub_WGI$TIME != t, ]
+}
+
+
+
+
+###### pattern1 - Elederly_pct
+
+ivreg_unbalance_pub_WGI_1 <- ivreg(Giving_money ~ 1
++ Public_transfer
+  + Poverty_rate
+  + Unemployment_rate_pct
+  + Chrstprotpct
+  + Chrstcatpct
+  + Chrstorthpct
+  + Islam_general_pct
+  + Buddism_general
+  #+ Australia
+  + Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 22 countries
+  + y2011 # remove y2010  -9 years-
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018 |
+  . - Public_transfer
+    + Elderly_pct,
+data = df_unbalance_pub_WGI
+)
+
+Public_6_1 <- coeftest(ivreg_unbalance_pub_WGI_1, vcov = vcovHC, type = "HC3")
+```
+
+
+
+```{r, echo=FALSE, include=FALSE}
+
+# IV2 RIght left
+
+
+# 2. GINI - Private
+
+
+df_unbalance_redist_priv <- df[!is.na(df$Relative_redistributive_effects) &
+  !is.na(df$log_Private_transfer) &
+  !is.na(df$Unemployment_rate_pct) &
+  !is.na(df$Chrstprotpct) &
+  !is.na(df$Poverty_rate) &
+  !is.na(df$Right_left), ]
+
+df_unbalance_redist_priv_count <- df_unbalance_redist_priv %>%
+  group_by(LOCATION) %>%
+  summarise(count = n())
+
+df_unbalance_redist_priv_one <- df_unbalance_redist_priv_count[df_unbalance_redist_priv_count$count == 1, ]
+
+for (i in df_unbalance_redist_priv_one$LOCATION) {
+  df_unbalance_redist_priv <- df_unbalance_redist_priv[df_unbalance_redist_priv$LOCATION != i, ]
+}
+
+df_unbalance_redist_priv_timecount <- df_unbalance_redist_priv %>%
+  group_by(TIME) %>%
+  summarise(timecount = n()) # each period is higher than 3 - OK
+
+df_unbalance_redist_priv_timeone <- df_unbalance_redist_priv_timecount[df_unbalance_redist_priv_timecount$timecount == 1, ]
+
+
+for (t in df_unbalance_redist_priv_timeone$TIME) {
+  df_unbalance_redist_priv <- df_unbalance_redist_priv[df_unbalance_redist_priv$TIME != t, ]
+}
+
+
+
+###### pattern 2- Right_left
+
+ivreg_unbalance_rel_redist_priv_2 <- ivreg(log_Private_transfer ~ 1
++ Relative_redistributive_effects
+  + Poverty_rate
+  + Unemployment_rate_pct
+  + Chrstprotpct
+  + Chrstcatpct
+  + Chrstorthpct
+  + Islam_general_pct
+  + Buddism_general
+  #+ Australia
+  + Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  #+ Greece
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 25 countries
+  + y2005 # omit y2004
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018 |
+  . - Relative_redistributive_effects
+    + Right_left,
+data = df_unbalance_redist_priv
+)
+
+
+GINI_2_2 <- coeftest(ivreg_unbalance_rel_redist_priv_2, vcov = vcovHC, type = "HC3")
+
+
+
+
+
+# 3. GINI - WGI
+
+
+df_unbalance_redist_WGI <- df[!is.na(df$Relative_redistributive_effects) &
+  !is.na(df$Giving_money) &
+  (df$Giving_money != "") &
+  (df$Giving_money != "-") &
+  !is.na(df$Chrstprotpct) &
+  !is.na(df$Right_left) &
+  !is.na(df$Poverty_rate) &
+  !is.na(df$Unemployment_rate_pct), ]
+
+df_unbalance_redist_WGI <- df_unbalance_redist_WGI[df_unbalance_redist_WGI$Giving_money != "", ]
+
+df_unbalance_redist_WGI_count <- df_unbalance_redist_WGI %>%
+  group_by(LOCATION) %>%
+  summarise(count = n())
+
+df_unbalance_redist_WGI_one <- df_unbalance_redist_WGI_count[df_unbalance_redist_WGI_count$count == 1, ]
+
+for (i in df_unbalance_redist_WGI_one$LOCATION) {
+  df_unbalance_redist_WGI <- df_unbalance_redist_WGI[df_unbalance_redist_WGI$LOCATION != i, ]
+}
+
+df_unbalance_redist_WGI_timecount <- df_unbalance_redist_WGI %>%
+  group_by(TIME) %>%
+  summarise(timecount = n())
+
+df_unbalance_redist_WGI_timeone <- df_unbalance_redist_WGI_timecount[df_unbalance_redist_WGI_timecount$TIME == 1, ]
+
+for (t in df_unbalance_redist_WGI_timeone$TIME) {
+  df_unbalance_redist_WGI <- df_unbalance_redist_WGI[df_unbalance_redist_WGI$TIME != t, ]
+}
+
+
+###### pattern2 - Right_left
+
+ivreg_unbalance_rel_redist_WGI_2 <- ivreg(Giving_money ~ 1 + Relative_redistributive_effects
+  + Poverty_rate
+  + Unemployment_rate_pct
+  + Chrstprotpct
+  + Chrstcatpct
+  + Chrstorthpct
+  + Islam_general_pct
+  + Buddism_general
+  #+ Australia
+  + Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  #+ Greece
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 22 countries
+  + y2011 # remove y2010  -9 years-
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018 |
+  . - Relative_redistributive_effects
+    + Right_left,
+data = df_unbalance_redist_WGI
+)
+
+GINI_3_2 <- coeftest(ivreg_unbalance_rel_redist_WGI_2, vcov = vcovHC, type = "HC3") # revise
+
+
+```
+
+
+
+
+```{r, echo=FALSE, include=FALSE}
+
+#IV3. Welfare
+# 2. GINI - log Private
+
+
+df_unbalance_redist_priv <- df[!is.na(df$Relative_redistributive_effects) &
+  !is.na(df$Private_transfer) &
+  !is.na(df$Unemployment_rate_pct) &
+  !is.na(df$Chrstprotpct) &
+  !is.na(df$Poverty_rate) &
+  !is.na(df$Right_left), ]
+
+df_unbalance_redist_priv_count <- df_unbalance_redist_priv %>%
+  group_by(LOCATION) %>%
+  summarise(count = n())
+
+df_unbalance_redist_priv_one <- df_unbalance_redist_priv_count[df_unbalance_redist_priv_count$count == 1, ]
+
+for (i in df_unbalance_redist_priv_one$LOCATION) {
+  df_unbalance_redist_priv <- df_unbalance_redist_priv[df_unbalance_redist_priv$LOCATION != i, ]
+}
+
+df_unbalance_redist_priv_timecount <- df_unbalance_redist_priv %>%
+  group_by(TIME) %>%
+  summarise(timecount = n()) # each period is higher than 3 - OK
+
+df_unbalance_redist_priv_timeone <- df_unbalance_redist_priv_timecount[df_unbalance_redist_priv_timecount$timecount == 1, ]
+
+
+for (t in df_unbalance_redist_priv_timeone$TIME) {
+  df_unbalance_redist_priv <- df_unbalance_redist_priv[df_unbalance_redist_priv$TIME != t, ]
+}
+
+
+
+###### pattern3 -Welfare
+
+ivreg_unbalance_rel_redist_priv_3 <- ivreg(log_Private_transfer ~ 1
++ Relative_redistributive_effects
+  + Poverty_rate
+  + Unemployment_rate_pct
+  + Chrstprotpct
+  + Chrstcatpct
+  + Chrstorthpct
+  + Islam_general_pct
+  + Buddism_general
+  #+ Australia
+  + Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 25 countries
+  + y2005 # omit y2004
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018 |
+  . - Relative_redistributive_effects
+    + Welfare,
+data = df_unbalance_redist_priv
+)
+
+
+GINI_2_3 <- coeftest(ivreg_unbalance_rel_redist_priv_3, vcov = vcovHC, type = "HC3")
+
+
+# 3. GINI - WGI
+
+
+df_unbalance_redist_WGI <- df[!is.na(df$Relative_redistributive_effects) &
+  !is.na(df$Giving_money) &
+  (df$Giving_money != "") &
+  (df$Giving_money != "-") &
+  !is.na(df$Chrstprotpct) &
+  !is.na(df$Right_left) &
+  !is.na(df$Poverty_rate) &
+  !is.na(df$Unemployment_rate_pct), ]
+
+df_unbalance_redist_WGI <- df_unbalance_redist_WGI[df_unbalance_redist_WGI$Giving_money != "", ]
+
+df_unbalance_redist_WGI_count <- df_unbalance_redist_WGI %>%
+  group_by(LOCATION) %>%
+  summarise(count = n())
+
+df_unbalance_redist_WGI_one <- df_unbalance_redist_WGI_count[df_unbalance_redist_WGI_count$count == 1, ]
+
+for (i in df_unbalance_redist_WGI_one$LOCATION) {
+  df_unbalance_redist_WGI <- df_unbalance_redist_WGI[df_unbalance_redist_WGI$LOCATION != i, ]
+}
+
+df_unbalance_redist_WGI_timecount <- df_unbalance_redist_WGI %>%
+  group_by(TIME) %>%
+  summarise(timecount = n())
+
+df_unbalance_redist_WGI_timeone <- df_unbalance_redist_WGI_timecount[df_unbalance_redist_WGI_timecount$TIME == 1, ]
+
+for (t in df_unbalance_redist_WGI_timeone$TIME) {
+  df_unbalance_redist_WGI <- df_unbalance_redist_WGI[df_unbalance_redist_WGI$TIME != t, ]
+}
+
+
+###### pattern3- Welfare
+
+ivreg_unbalance_rel_redist_WGI_3 <- ivreg(Giving_money ~ 1 + Relative_redistributive_effects
+  + Poverty_rate
+  + Unemployment_rate_pct
+  + Chrstprotpct
+  + Chrstcatpct
+  + Chrstorthpct
+  + Islam_general_pct
+  + Buddism_general
+  #+ Australia
+  + Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 22 countries
+  + y2011 # remove y2010  -9 years-
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018 |
+  . - Relative_redistributive_effects
+    + Welfare,
+data = df_unbalance_redist_WGI
+)
+
+GINI_3_3 <- coeftest(ivreg_unbalance_rel_redist_WGI_3, vcov = vcovHC, type = "HC3") # revise
+
+
+
+```
+
+
+
+
+
+
+```{r, echo=FALSE, include=FALSE}
+
+
+# iV4. Right-left
+# 2. GINI - Private
+
+
+df_unbalance_redist_priv <- df[!is.na(df$Relative_redistributive_effects) &
+  !is.na(df$log_Private_transfer) &
+  !is.na(df$Unemployment_rate_pct) &
+  !is.na(df$Chrstprotpct) &
+  !is.na(df$Poverty_rate) &
+  !is.na(df$Right_left), ]
+
+df_unbalance_redist_priv_count <- df_unbalance_redist_priv %>%
+  group_by(LOCATION) %>%
+  summarise(count = n())
+
+df_unbalance_redist_priv_one <- df_unbalance_redist_priv_count[df_unbalance_redist_priv_count$count == 1, ]
+
+for (i in df_unbalance_redist_priv_one$LOCATION) {
+  df_unbalance_redist_priv <- df_unbalance_redist_priv[df_unbalance_redist_priv$LOCATION != i, ]
+}
+
+df_unbalance_redist_priv_timecount <- df_unbalance_redist_priv %>%
+  group_by(TIME) %>%
+  summarise(timecount = n()) # each period is higher than 3 - OK
+
+df_unbalance_redist_priv_timeone <- df_unbalance_redist_priv_timecount[df_unbalance_redist_priv_timecount$timecount == 1, ]
+
+
+for (t in df_unbalance_redist_priv_timeone$TIME) {
+  df_unbalance_redist_priv <- df_unbalance_redist_priv[df_unbalance_redist_priv$TIME != t, ]
+}
+
+
+
+###### pattern 5 - all
+
+ivreg_unbalance_rel_redist_priv_5 <- ivreg(log_Private_transfer ~ 1
++ Relative_redistributive_effects
+  + Poverty_rate
+  + Unemployment_rate_pct
+  + Chrstprotpct
+  + Chrstcatpct
+  + Chrstorthpct
+  + Islam_general_pct
+  + Buddism_general
+  #+ Australia
+  + Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  #+ Greece
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Lithuania
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Norway
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Switzerland
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 25 countries
+  + y2005 # omit y2004
+  + y2006
+  + y2007
+  + y2008
+  + y2009
+  + y2010
+  + y2011
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  + y2018 |
+  . - Relative_redistributive_effects
+  + Elderly_pct
+  + Right_left,
+data = df_unbalance_redist_priv
+)
+
+
+GINI_2_5 <- coeftest(ivreg_unbalance_rel_redist_priv_5, vcov = vcovHC, type = "HC3")
+
+
+# 3. GINI - WGI
+
+
+df_unbalance_redist_WGI <- df[!is.na(df$Relative_redistributive_effects) &
+  !is.na(df$Giving_money) &
+  (df$Giving_money != "") &
+  (df$Giving_money != "-") &
+  !is.na(df$Chrstprotpct) &
+  !is.na(df$Right_left) &
+  !is.na(df$Poverty_rate) &
+  !is.na(df$Unemployment_rate_pct), ]
+
+df_unbalance_redist_WGI <- df_unbalance_redist_WGI[df_unbalance_redist_WGI$Giving_money != "", ]
+
+df_unbalance_redist_WGI_count <- df_unbalance_redist_WGI %>%
+  group_by(LOCATION) %>%
+  summarise(count = n())
+
+df_unbalance_redist_WGI_one <- df_unbalance_redist_WGI_count[df_unbalance_redist_WGI_count$count == 1, ]
+
+for (i in df_unbalance_redist_WGI_one$LOCATION) {
+  df_unbalance_redist_WGI <- df_unbalance_redist_WGI[df_unbalance_redist_WGI$LOCATION != i, ]
+}
+
+df_unbalance_redist_WGI_timecount <- df_unbalance_redist_WGI %>%
+  group_by(TIME) %>%
+  summarise(timecount = n())
+
+df_unbalance_redist_WGI_timeone <- df_unbalance_redist_WGI_timecount[df_unbalance_redist_WGI_timecount$TIME == 1, ]
+
+for (t in df_unbalance_redist_WGI_timeone$TIME) {
+  df_unbalance_redist_WGI <- df_unbalance_redist_WGI[df_unbalance_redist_WGI$TIME != t, ]
+}
+
+
+###### pattern5-IV all
+
+ivreg_unbalance_rel_redist_WGI_5 <- ivreg(Giving_money ~ 1 + Relative_redistributive_effects
+  + Poverty_rate
+  + Unemployment_rate_pct
+  + Chrstprotpct
+  + Chrstcatpct
+  + Chrstorthpct
+  + Islam_general_pct
+  + Buddism_general
+  #+ Australia
+  + Austria
+  + Canada
+  + Czech_Republic
+  + Estonia
+  + Finland
+  + Germany
+  #+ Greece
+  + Hungary
+  + Ireland
+  + Israel
+  + Italy
+  + Luxembourg
+  + Mexico
+  + New_Zealand
+  + Poland
+  + Portugal
+  + Republic_of_Korea
+  + Slovakia
+  + Slovenia
+  + Turkey
+  + United_Kingdom
+  + United_States_of_America # 23 countries
+  + y2011 # remove y2010  -9 years-
+  + y2012
+  + y2013
+  + y2014
+  + y2015
+  + y2016
+  + y2017
+  +y2018 |
+    . - Relative_redistributive_effects
+  + Elderly_pct
+  + Right_left,
+data = df_unbalance_redist_WGI
+)
+
+GINI_3_5 <- coeftest(ivreg_unbalance_rel_redist_WGI_5, vcov = vcovHC, type = "HC3") # revise
+
+
+```
+
+
+
+
+
+```{r, echo=FALSE,results='asis'}
+
+
+stargazer(Public_5_1, Public_6_1, GINI_2_2, GINI_3_2, GINI_2_3,GINI_3_3,GINI_2_5,GINI_3_5,
+  keep = c(
+    "\\bRelative_redistributive_effects\\b", "\\bPublic_transfer\\b", "\\bNet_public_transfer\\b",
+    "\\bUnemployment_rate_pct\\b", "\\bPoverty_rate\\b","\\bChrstprotpct\\b","\\bChrstcatpct\\b","\\bChrstorthpct\\b","\\bIslam_general_pct\\b","\\bBuddism_general\\b"
+  ),
+  type = "html",
+  title = "IV Estimation",
+  column.labels = c("log Private transfer", "Giving money index", "log Private transfer", "Giving money index", "log Private transfer", "Giving money index","log Private transfer", "Giving money index"),
+  dep.var.caption = "Target variables",
+  multicolumn = FALSE,
+  dep.var.labels = c(
+  "IV1","IV1","IV2","IV2","IV3","IV3","IV5","IV5"),
+  add.lines = list(
+    c("Observations",
+    nrow(df_unbalance_priv_pub),
+    nrow(df_unbalance_pub_WGI),
+    nrow(df_unbalance_redist_priv),
+    nrow(df_unbalance_redist_WGI),
+    nrow(df_unbalance_redist_priv),
+    nrow(df_unbalance_redist_WGI),
+    nrow(df_unbalance_redist_priv),
+    nrow(df_unbalance_redist_WGI)
+   ),
+    c(
+      "Countries",
+      length(unique(df_unbalance_priv_pub$LOCATION)),
+      length(unique(df_unbalance_pub_WGI$LOCATION)),
+      length(unique(df_unbalance_redist_priv$LOCATION)), length(unique(df_unbalance_redist_WGI$LOCATION)),
+      length(unique(df_unbalance_redist_priv$LOCATION)), length(unique(df_unbalance_redist_WGI$LOCATION)),
+      length(unique(df_unbalance_redist_priv$LOCATION)), length(unique(df_unbalance_redist_WGI$LOCATION))
+    ),
+    c(
+      "Time Periods",
+      length(unique(df_unbalance_priv_pub$TIME)),
+      length(unique(df_unbalance_pub_WGI$TIME)),
+      length(unique(df_unbalance_redist_priv$TIME)),
+      length(unique(df_unbalance_redist_WGI$TIME)),
+      length(unique(df_unbalance_redist_priv$TIME)),
+      length(unique(df_unbalance_redist_WGI$TIME)),
+      length(unique(df_unbalance_redist_priv$TIME)),
+      length(unique(df_unbalance_redist_WGI$TIME))
+      )
+    )
+  )
+
+
+
+```
+
+
+
+```{r, echo=FALSE,results='asis'}
+
+
+stargazer(Public_5_1, Public_6_1, GINI_2_2, GINI_3_2, GINI_2_3,GINI_3_3,GINI_2_5,GINI_3_5,
+  keep = c(
+    "\\bRelative_redistributive_effects\\b", "\\bPublic_transfer\\b", "\\bNet_public_transfer\\b",
+    "\\bUnemployment_rate_pct\\b", "\\bPoverty_rate\\b","\\bChrstprotpct\\b","\\bChrstcatpct\\b","\\bChrstorthpct\\b","\\bIslam_general_pct\\b","\\bBuddism_general\\b"
+  ),
+  type = "latex",
+  out = "s.all.tex",
+  title = "IV Estimation",
+  column.labels = c("log Private transfer", "Giving money index", "log Private transfer", "Giving money index", "log Private transfer", "Giving money index","log Private transfer", "Giving money index"),
+  dep.var.caption = "Target variables",
+  multicolumn = FALSE,
+  dep.var.labels = c(
+  "IV1","IV1","IV2","IV2","IV3","IV3","IV5","IV5"),
+  add.lines = list(
+    c("Observations",
+    nrow(df_unbalance_priv_pub),
+    nrow(df_unbalance_pub_WGI),
+    nrow(df_unbalance_redist_priv),
+    nrow(df_unbalance_redist_WGI),
+    nrow(df_unbalance_redist_priv),
+    nrow(df_unbalance_redist_WGI),
+    nrow(df_unbalance_redist_priv),
+    nrow(df_unbalance_redist_WGI)
+   ),
+    c(
+      "Countries",
+      length(unique(df_unbalance_priv_pub$LOCATION)),
+      length(unique(df_unbalance_pub_WGI$LOCATION)),
+      length(unique(df_unbalance_redist_priv$LOCATION)), length(unique(df_unbalance_redist_WGI$LOCATION)),
+      length(unique(df_unbalance_redist_priv$LOCATION)), length(unique(df_unbalance_redist_WGI$LOCATION)),
+      length(unique(df_unbalance_redist_priv$LOCATION)), length(unique(df_unbalance_redist_WGI$LOCATION))
+    ),
+    c(
+      "Time Periods",
+      length(unique(df_unbalance_priv_pub$TIME)),
+      length(unique(df_unbalance_pub_WGI$TIME)),
+      length(unique(df_unbalance_redist_priv$TIME)),
+      length(unique(df_unbalance_redist_WGI$TIME)),
+      length(unique(df_unbalance_redist_priv$TIME)),
+      length(unique(df_unbalance_redist_WGI$TIME)),
+      length(unique(df_unbalance_redist_priv$TIME)),
+      length(unique(df_unbalance_redist_WGI$TIME))
+      )
+    )
+  )
+
+
+
+```
